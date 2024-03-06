@@ -3,7 +3,7 @@ local Color = require("colorful.color")
 ---@class Highlight
 ---@field fg? Color
 ---@field bg? Color
----@field special? Color
+---@field sp? Color
 ---@field link? string
 ---@field bold? boolean
 ---@field underline? boolean
@@ -41,9 +41,6 @@ function Highlight:new(t)
     for alias, key in pairs(COLOR_KEYS) do
         local value = t[alias]
         if value then
-            if type(value) == "number" then
-                value = string.format("#%06x", value)
-            end
             hl[key] = Color:parse(value)
         end
     end
@@ -65,28 +62,39 @@ function Highlight:new(t)
     hl.ctermbg = t.ctermbg
     hl.cterm = t.cterm
 
+    ---@type Highlight
     return setmetatable(hl, self)
 end
 
+---Returns whether or not the given highlight group `name` exists.
+---
+---This function is a simple wrapper over `vim.fn.hlexists`.
+---@param name string
+---@return boolean
+function Highlight.exists(name)
+    return vim.fn.hlexists(name) == 1
+end
+
 ---Returns the result of `nvim_get_hl` as a `Highlight` object.
+---
+---Throws an error if the highlight group `name` does not exist.
 ---
 ---This function was adapted from a reddit comment, see:
 ---https://www.reddit.com/r/neovim/comments/oxddk9/comment/h7maerh
 ---@param name string
 ---@param ns_id? integer
 ---@param link? boolean
----@return Highlight?
+---@return Highlight
 function Highlight:from_group(name, ns_id, link)
-    ---@diagnostic disable-next-line: undefined-field
-    local ok, hl = pcall(vim.api.nvim_get_hl, ns_id or 0, { name = name, link = link or false })
-    if not ok then
-        return
+    if not Highlight.exists(name) then
+        error(string.format("Highlight group `%s` does not exist", name))
     end
 
+    local hl = vim.api.nvim_get_hl(ns_id or 0, { name = name, link = link or false })
     return Highlight:new(hl)
 end
 
----Sets the given highlight group with this `Highlight` using `nvim_set_hl`.
+---Sets the given highlight group `name` with this highlight using `nvim_set_hl`.
 ---@param name string
 ---@param ns_id? integer
 function Highlight:set_group(name, ns_id)
@@ -112,7 +120,7 @@ function Highlight.resolve_link(name, ns_id)
     local current = name
     while true do
         -- avoid creating a group that doesn't exist
-        if vim.fn.hlexists(current) ~= 1 then
+        if not Highlight.exists(current) then
             return nil
         end
 
