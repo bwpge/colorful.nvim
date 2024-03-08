@@ -34,26 +34,26 @@ local mt = {
         end
         Vec3[key] = value
     end,
-    __add = function(self, ...)
-        return self:__add(...)
+    __add = function(...)
+        return Vec3.__add(...)
     end,
-    __sub = function(self, ...)
-        return self:__sub(...)
+    __sub = function(...)
+        return Vec3.__sub(...)
     end,
-    __mul = function(self, ...)
-        return self:__mul(...)
+    __mul = function(...)
+        return Vec3.__mul(...)
     end,
-    __div = function(self, ...)
-        return self:__div(...)
+    __div = function(...)
+        return Vec3.__div(...)
     end,
-    __unm = function(self)
-        return self:__unm()
+    __unm = function(...)
+        return Vec3.__unm(...)
     end,
-    __eq = function(self, ...)
-        return self:__eq(...)
+    __eq = function(...)
+        return Vec3.__eq(...)
     end,
-    __tostring = function(self)
-        return self:__tostring()
+    __tostring = function(...)
+        return Vec3.__tostring(...)
     end,
 }
 
@@ -72,56 +72,91 @@ function Vec3:new(x, y, z)
     return o
 end
 
----@private
+---@param lhs Vec3
 ---@param rhs Vec3
 ---@return Vec3
-function Vec3:__add(rhs)
-    return Vec3:new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+function Vec3.__add(lhs, rhs)
+    if type(lhs) ~= "table" or type(rhs) ~= "table" then
+        error("vec3: invalid operands for addition")
+    end
+    return Vec3:new(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z)
 end
 
+---@param lhs Vec3
 ---@param rhs Vec3
 ---@return Vec3
-function Vec3:__sub(rhs)
-    return Vec3:new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+function Vec3.__sub(lhs, rhs)
+    if type(lhs) ~= "table" or type(rhs) ~= "table" then
+        error("vec3: invalid operands for subtraction")
+    end
+    return Vec3:new(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z)
 end
 
----@param value number
+---@param lhs number
+---@param rhs number
 ---@return Vec3
-function Vec3:__mul(value)
-    if type(self) == "number" and type(value) == "table" then
-        return Vec3:new(value.x * self, value.y * self, value.z * self)
-    end
-    if type(self) == "table" and type(value) == "number" then
-        return Vec3:new(self.x * value, self.y * value, self.z * value)
+function Vec3.__mul(lhs, rhs)
+    local vec, scalar
+    if type(lhs) == "table" and type(rhs) == "number" then
+        vec = lhs
+        scalar = rhs
+    elseif type(lhs) == "number" and type(rhs) == "table" then
+        vec = rhs
+        scalar = lhs
+    else
+        error("vec3: invalid operands for scalar multiplication")
     end
 
-    error("vec3: invalid operand types for scalar multiplication")
+    return Vec3:new(vec.x * scalar, vec.y * scalar, vec.z * scalar)
 end
 
----@param value number
+---@param lhs number
+---@param rhs number
 ---@return Vec3
-function Vec3:__div(value)
-    if type(self) == "table" and type(value) == "number" then
-        return Vec3:new(self.x / value, self.y / value, self.z / value)
+function Vec3.__div(lhs, rhs)
+    local vec, scalar
+    if type(lhs) == "table" and type(rhs) == "number" then
+        vec = lhs
+        scalar = rhs
+    elseif type(lhs) == "number" and type(rhs) == "table" then
+        vec = rhs
+        scalar = lhs
+    else
+        error("vec3: invalid operands for scalar multiplication")
     end
 
-    error("vec3: invalid operand types for scalar division")
+    return Vec3:new(vec.x / scalar, vec.y / scalar, vec.z / scalar)
 end
 
+---@param self Vec3
 ---@return Vec3
-function Vec3:__unm()
+function Vec3.__unm(self)
     return Vec3:new(-self.x, -self.y, -self.z)
 end
 
+---@param lhs Vec3
 ---@param rhs Vec3
 ---@return boolean
-function Vec3:__eq(rhs)
-    return self.x == rhs.x and self.y == rhs.y and self.z == rhs.z
+function Vec3.__eq(lhs, rhs)
+    if type(lhs) ~= "table" or type(rhs) ~= "table" then
+        error("vec3: invalid operands for equality")
+    end
+    return lhs.x == rhs.x and lhs.y == rhs.y and lhs.z == rhs.z
 end
 
+local function fmt_component(value)
+    return string.format("%f", value):gsub("(%.%d-)0+$", "%1"):gsub("%.$", "")
+end
+
+---@param self Vec3
 ---@return string
-function Vec3:__tostring()
-    return ("[%f, %f, %f]"):format(self.x, self.y, self.z)
+function Vec3.__tostring(self)
+    return string.format(
+        "[%s, %s, %s]",
+        fmt_component(self.x),
+        fmt_component(self.y),
+        fmt_component(self.z)
+    )
 end
 
 return Vec3
