@@ -1,22 +1,23 @@
-local Vec3 = require("colorful.vec3")
+local const = require("colorful.const")
 local u = require("colorful.utils")
+local Vec3 = require("colorful.vec3")
 
-local function make_metatable(cls)
+local function make_metatable(cls, lut)
     return {
         __index = function(self, key)
-            if self._[key] then
+            if lut[key] then
                 return self._[key]
             end
             return cls[key]
         end,
         __newindex = function(self, key, value)
-            if self._[key] then
+            if lut[key] then
                 self._[key] = value
             end
             cls[key] = value
         end,
         __tostring = function(self)
-            return self:hex()
+            return self:__tostring()
         end,
     }
 end
@@ -27,7 +28,7 @@ end
 ---@field g number Green component in the range [0, 1]
 ---@field b number Blue component in the range [0, 1]
 local RGBColor = {}
-local RGBColor_mt = make_metatable(RGBColor)
+local RGBColor_mt = make_metatable(RGBColor, const.RGB_COMPONENTS)
 
 ---@class HSLColor
 ---@field private _ Vec3
@@ -35,23 +36,25 @@ local RGBColor_mt = make_metatable(RGBColor)
 ---@field s number Saturation component in the range [0, 1]
 ---@field l number Lightness component in the range [0, 1]
 local HSLColor = {}
-local HSLColor_mt = make_metatable(HSLColor)
+local HSLColor_mt = make_metatable(HSLColor, const.HSL_COMPONENTS)
 
 ---Create a new RGB color object.
 ---
----RGB components must be normalized to floating point values between 0-1.
+---RGB components must be normalized in the range [0, 1].
+---@private
 ---@param r number Normalized red component
 ---@param g number Normalized green component
 ---@param b number Normalized blue component
 ---@return RGBColor
-function RGBColor:new(r, g, b)
+---@nodiscard
+function RGBColor:_ctor(r, g, b)
     for _, val in ipairs({ r, g, b }) do
         if not u.in_range(val, 0, 1) then
             error("RGB component values must be in the range [0, 1]")
         end
     end
 
-    local o = { _ = Vec3:new(r, g, b) }
+    local o = { _ = Vec3(r, g, b) }
     return setmetatable(o, RGBColor_mt)
 end
 
@@ -88,7 +91,7 @@ function RGBColor:parse(value)
         b = tonumber(val:sub(6, 7), 16) / 255
     end
 
-    return RGBColor:new(r, g, b)
+    return RGBColor:_ctor(r, g, b)
 end
 
 ---Returns this color as a hexadecimal string with the form `#RRGGBB`.
@@ -100,14 +103,34 @@ function RGBColor:hex()
     return string.format("#%02x%02x%02x", r, g, b)
 end
 
----Returns this color as a tuple of HSL components.
+---Modifies the RGB component values by the given amounts.
 ---
----All components returned are normalized in the range [0, 1].
+---Values must be normalized in the range [-1, 1]. The result of adjustments
+---are clamped to [0, 1].
+---@param r number
+---@param g number
+---@param b number
+---@return RGBColor self Reference to this object for method chaining
+function RGBColor:adjust(r, g, b)
+    for _, val in ipairs({ r, g, b }) do
+        if not val or not u.in_range(val, -1, 1) then
+            error("adjustment values must be numbers in the range [-1, 1]")
+        end
+    end
+
+    self.r = u.clamp(self.r + r, 0, 1)
+    self.g = u.clamp(self.g + g, 0, 1)
+    self.b = u.clamp(self.b + b, 0, 1)
+
+    return self
+end
+
+---Converts this color to an `RGBColor`.
+---@return HSLColor color New `HSLColor` object
 ---@nodiscard
----@return HSLColor
 function RGBColor:hsl()
     local h, s, l = u.rgb_to_hsl(self.r, self.g, self.b)
-    return HSLColor:new(h, s, l)
+    return HSLColor:_ctor(h, s, l)
 end
 
 ---Applies a linear blend between this color and `rhs`, where `amount` is used
@@ -130,11 +153,13 @@ end
 
 ---Lightens this color by adding `amount` to the lightness.
 ---
----This is somewhat computationally expensive, as the RGB components are converted to HSL
----to preserve the base hue and saturation.
+---This is somewhat computationally expensive, as the RGB components are converted to HSL to
+---preserve the base hue and saturation, and then converted back to RGB. If you are making multiple
+---adjustments to hue, saturation, or lightness, consider using `RGBColor:hsl()` to manipulate those
+---values directly and then convert back with `HSLColor:rgb()`.
 ---@param amount number A floating point value in the range [0, 1]
----@return RGBColor
-function RGBColor:tint(amount)
+---@return RGBColor self Reference to this object for method chaining
+function RGBColor:lighten(amount)
     if not u.in_range(amount, 0, 1) then
         error("tint amount must be in the range [0, 1]")
     end
@@ -148,11 +173,13 @@ end
 
 ---Darkens this color by subtracting `amount` from the lightness.
 ---
----This is somewhat computationally expensive, as the RGB components are converted to HSL
----to preserve the base hue and saturation.
+---This is somewhat computationally expensive, as the RGB components are converted to HSL to
+---preserve the base hue and saturation, and then converted back to RGB. If you are making multiple
+---adjustments to hue, saturation, or lightness, consider using `RGBColor:hsl()` to manipulate those
+---values directly and then convert back with `HSLColor:rgb()`.
 ---@param amount number A floating point value in the range [0, 1]
----@return RGBColor
-function RGBColor:shade(amount)
+---@return RGBColor self Reference to this object for method chaining
+function RGBColor:darken(amount)
     if not u.in_range(amount, 0, 1) then
         error("shade amount must be in the range [0, 1]")
     end
@@ -164,29 +191,72 @@ function RGBColor:shade(amount)
     return self
 end
 
+---@param self RGBColor
+---@return string
+function RGBColor.__tostring(self)
+    return self:hex()
+end
+
 ---Create a new HSL color object.
 ---
----HSL components must be normalized to floating point values between 0-1.
+---HSL components must be normalized in the range [0, 1].
+---@private
 ---@param h number Normalized hue value
 ---@param s number Normalized saturation value
 ---@param l number Normalized lightness value
 ---@return HSLColor
-function HSLColor:new(h, s, l)
+---@nodiscard
+function HSLColor:_ctor(h, s, l)
     for _, val in ipairs({ h, s, l }) do
         if not u.in_range(val, 0, 1) then
             error("HSL component values must be in the range [0, 1]")
         end
     end
 
-    local o = { _ = Vec3:new(h, s, l) }
+    local o = { _ = Vec3(h % 1, s, l) }
     return setmetatable(o, HSLColor_mt)
 end
 
+---Parses a color from a string with the form `hsl(H, S, L)`.
+---
+--- - `H`: degrees in the range [0, 360)
+--- - `S`: percentage in the range [0, 100], with optional `%` sign
+--- - `L`: same as `S`
+---
+---The `H` value can have the `deg` suffix like in CSS (e.g., `155deg`), and
+--commas between components are optional.
+---@param s string
+---@return HSLColor
+function HSLColor:parse(s)
+    local str = s:gsub("(hsl%(%d+)deg", "%1")
+    local hsl = { str:match("^hsl%((%d+),?%s+(%d+)%%?,?%s+(%d+)%%?%)$") }
+
+    if #hsl ~= 3 then
+        error(string.format("`%s` is not a valid HSL string", s))
+    end
+    for idx, v in ipairs(hsl) do
+        hsl[idx] = tonumber(v)
+    end
+
+    if hsl[1] >= 360 then
+        error(string.format("`%s` has an invalid hue (`%s` is out of range)", s, hsl[1]))
+    end
+    if hsl[2] > 100 then
+        error(string.format("`%s` has an invalid saturation (`%s` is out of range)", s, hsl[2]))
+    end
+    if hsl[3] > 100 then
+        error(string.format("`%s` has an invalid lightness (`%s` is out of range)", s, hsl[3]))
+    end
+
+    return HSLColor:_ctor(hsl[1] / 360, hsl[2] / 100, hsl[3] / 100)
+end
+
 ---Converts this color to an `RGBColor`.
----@return RGBColor
+---@return RGBColor color New `RGBColor` object
+---@nodiscard
 function HSLColor:rgb()
     local r, g, b = u.hsl_to_rgb(self.h, self.s, self.l)
-    return RGBColor:new(r, g, b)
+    return RGBColor:_ctor(r, g, b)
 end
 
 ---Modifies the HSL component values by the given amounts.
@@ -199,7 +269,7 @@ end
 ---@param h number
 ---@param s number
 ---@param l number
----@return HSLColor
+---@return HSLColor self Reference to this object for method chaining
 function HSLColor:adjust(h, s, l)
     for _, val in ipairs({ h, s, l }) do
         if not val or not u.in_range(val, -1, 1) then
@@ -214,7 +284,41 @@ function HSLColor:adjust(h, s, l)
     return self
 end
 
+---@param self HSLColor
+---@return string
+function HSLColor.__tostring(self)
+    -- NOTE: hue should always be in the range [0, 1), so the degrees should
+    -- never be >=360. however if we have bugs elsewhere in the code, this
+    -- might result in a bad output
+    local h = u.round(self.h * 360)
+    local s = u.round(self.s * 100)
+    local l = u.round(self.l * 100)
+    return string.format("hsl(%d, %d%%, %d%%)", h, s, l)
+end
+
+local mt = {
+    __call = function(self, ...)
+        local args = { ... }
+        if #args == 0 then
+            return self:_ctor(0)
+        end
+        return self:_ctor(...)
+    end,
+}
+setmetatable(RGBColor, mt)
+setmetatable(HSLColor, mt)
+
+---@alias RGBColor.ctor0 fun(): RGBColor
+---@alias RGBColor.ctor3 fun(r: number, g: number, g: number): RGBColor
+---@type RGBColor|RGBColor.ctor0|RGBColor.ctor3
+local RGB = RGBColor
+
+---@alias HSLColor.ctor0 fun(): HSLColor
+---@alias HSLColor.ctor3 fun(h: number, s: number, l: number): HSLColor
+---@type HSLColor|HSLColor.ctor0|HSLColor.ctor3
+local HSL = HSLColor
+
 return {
-    RGBColor = RGBColor,
-    HSLColor = HSLColor,
+    RGBColor = RGB,
+    HSLColor = HSL,
 }

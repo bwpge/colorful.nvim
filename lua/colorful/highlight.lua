@@ -1,3 +1,4 @@
+local const = require("colorful.const")
 local RGBColor = require("colorful.color").RGBColor
 
 ---@class Highlight
@@ -21,18 +22,6 @@ local RGBColor = require("colorful.color").RGBColor
 ---@field ctermbg? number|string
 ---@field cterm? table
 local Highlight = {}
-local mt = {
-    __index = Highlight,
-}
-
-local COLOR_KEYS = {
-    fg = "fg",
-    foreground = "fg",
-    bg = "bg",
-    background = "bg",
-    sp = "sp",
-    special = "sp",
-}
 
 ---Creates a new `Highlight` with the given table values.
 ---
@@ -40,7 +29,7 @@ local COLOR_KEYS = {
 ---@param t table
 function Highlight:new(t)
     local hl = {}
-    for alias, key in pairs(COLOR_KEYS) do
+    for alias, key in pairs(const.HL_COLOR_KEYS) do
         local value = t[alias]
         if value then
             hl[key] = RGBColor:parse(value)
@@ -65,7 +54,9 @@ function Highlight:new(t)
     hl.cterm = t.cterm
 
     ---@type Highlight
-    return setmetatable(hl, mt)
+    return setmetatable(hl, {
+        __index = Highlight,
+    })
 end
 
 ---Returns whether or not the given highlight group `name` exists.
