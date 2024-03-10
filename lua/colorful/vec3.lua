@@ -63,6 +63,24 @@ function Vector3:_ctor(x, y, z)
     return o
 end
 
+---Returns the *dot product* between this vector and `rhs`.
+---@param rhs Vec3
+---@return number
+function Vector3:dot(rhs)
+    return self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+end
+
+---Returns the *cross product* between this vector and `rhs`.
+---@param rhs Vec3
+---@return Vec3
+function Vector3:cross(rhs)
+    local x = self.y * rhs.z - self.z * rhs.y
+    local y = self.z * rhs.x - self.x * rhs.z
+    local z = self.x * rhs.y - self.y * rhs.x
+    return Vector3:_ctor(x, y, z)
+end
+
+---@private
 ---@param lhs Vec3
 ---@param rhs Vec3
 ---@return Vec3
@@ -73,6 +91,7 @@ function Vector3.__add(lhs, rhs)
     return Vector3:_ctor(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z)
 end
 
+---@private
 ---@param lhs Vec3
 ---@param rhs Vec3
 ---@return Vec3
@@ -83,6 +102,7 @@ function Vector3.__sub(lhs, rhs)
     return Vector3:_ctor(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z)
 end
 
+---@private
 ---@param lhs number
 ---@param rhs number
 ---@return Vec3
@@ -101,6 +121,7 @@ function Vector3.__mul(lhs, rhs)
     return Vector3:_ctor(vec.x * scalar, vec.y * scalar, vec.z * scalar)
 end
 
+---@private
 ---@param lhs number
 ---@param rhs number
 ---@return Vec3
@@ -119,12 +140,14 @@ function Vector3.__div(lhs, rhs)
     return Vector3:_ctor(vec.x / scalar, vec.y / scalar, vec.z / scalar)
 end
 
+---@private
 ---@param self Vec3
 ---@return Vec3
 function Vector3.__unm(self)
     return Vector3:_ctor(-self.x, -self.y, -self.z)
 end
 
+---@private
 ---@param lhs Vec3
 ---@param rhs Vec3
 ---@return boolean
@@ -140,6 +163,7 @@ local function fmt_component(value)
     return string.format("%f", value):gsub("(%.%d-)0+$", "%1"):gsub("%.$", "")
 end
 
+---@private
 ---@param self Vec3
 ---@return string
 function Vector3.__tostring(self)
