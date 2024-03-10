@@ -133,16 +133,18 @@ function RGBColor:hsl()
     return HSLColor:_ctor(h, s, l)
 end
 
----Applies a linear blend between this color and `rhs`, where `amount` is used
----from this color and `1 - amount` is used of `rhs`.
+---Applies a linear blend between this color and `rhs`, where `amount` is used from this color and
+--`1 - amount` is used of `rhs`.
+---
+---This is essentially *alpha compositing* with this color being treated as the top layer with
+---`amount` as the alpha component, and `rhs` as the bottom layer.
+---
+---Any `amount` is valid, but it will be clamped to [0, 1] before blending.
 ---@param rhs RGBColor
----@param amount number A floating point value in the range [0, 1]
----@return RGBColor
+---@param amount number Any floating point value
+---@return RGBColor self Reference to this object for method chaining
 function RGBColor:blend(rhs, amount)
-    if amount > 1 or amount < 0 then
-        error("blend amount must be in the range [0, 1]")
-    end
-
+    amount = u.clamp(amount, 0, 1)
     local f = 1.0 - amount
     self.r = u.clamp((amount * self.r) + (f * rhs.r), 0, 1)
     self.g = u.clamp((amount * self.g) + (f * rhs.g), 0, 1)
@@ -151,46 +153,60 @@ function RGBColor:blend(rhs, amount)
     return self
 end
 
----Lightens this color by adding `amount` to the lightness.
+---Add `amount` to the hue angle. A positive `amount` rotates clockwise (R->G->B), a negative
+---`amount` rotates counter-clockwise (B->G->R).
 ---
----This is somewhat computationally expensive, as the RGB components are converted to HSL to
----preserve the base hue and saturation, and then converted back to RGB. If you are making multiple
----adjustments to hue, saturation, or lightness, consider using `RGBColor:hsl()` to manipulate those
----values directly and then convert back with `HSLColor:rgb()`.
----@param amount number A floating point value in the range [0, 1]
+---Any `amount` is valid, but the result is clamped to produce a valid color.
+---
+---This is somewhat computationally expensive. If you are making multiple adjustments to hue,
+---saturation, or lightness, consider using `RGBColor:hsl()` to manipulate those values directly and
+---then convert back with `HSLColor:rgb()`.
+---@param amount number Any floating point value
+---@return RGBColor self Reference to this object for method chaining
+function RGBColor:rotate(amount)
+    self.r, self.g, self.b = self:hsl():rotate(amount):rgb():unpack()
+    return self
+end
+
+---Add `amount` to the lightness. Lightens the color with a positive value, darkens when using a
+---negative `amount`.
+---
+---Any `amount` is valid, but the result is clamped to produce a valid color.
+---
+---This is somewhat computationally expensive. If you are making multiple adjustments to hue,
+---saturation, or lightness, consider using `RGBColor:hsl()` to manipulate those values directly and
+---then convert back with `HSLColor:rgb()`.
+---@param amount number Any floating point value
+---@return RGBColor self Reference to this object for method chaining
+function RGBColor:saturate(amount)
+    self.r, self.g, self.b = self:hsl():saturate(amount):rgb():unpack()
+    return self
+end
+
+---Add `amount` to the lightness. Lightens the color with a positive value, darkens when using a
+---negative `amount`.
+---
+---Any `amount` is valid, but the result is clamped to produce a valid color.
+---
+---This is somewhat computationally expensive. If you are making multiple adjustments to hue,
+---saturation, or lightness, consider using `RGBColor:hsl()` to manipulate those values directly and
+---then convert back with `HSLColor:rgb()`.
+---@param amount number Any floating point value
 ---@return RGBColor self Reference to this object for method chaining
 function RGBColor:lighten(amount)
-    if not u.in_range(amount, 0, 1) then
-        error("tint amount must be in the range [0, 1]")
-    end
-
-    local hsl = self:hsl()
-    hsl.l = u.clamp(hsl.l + amount, 0, 1)
-    self.r, self.g, self.b = u.hsl_to_rgb(hsl.h, hsl.s, hsl.l)
-
+    self.r, self.g, self.b = self:hsl():lighten(amount):rgb():unpack()
     return self
 end
 
----Darkens this color by subtracting `amount` from the lightness.
----
----This is somewhat computationally expensive, as the RGB components are converted to HSL to
----preserve the base hue and saturation, and then converted back to RGB. If you are making multiple
----adjustments to hue, saturation, or lightness, consider using `RGBColor:hsl()` to manipulate those
----values directly and then convert back with `HSLColor:rgb()`.
----@param amount number A floating point value in the range [0, 1]
----@return RGBColor self Reference to this object for method chaining
-function RGBColor:darken(amount)
-    if not u.in_range(amount, 0, 1) then
-        error("shade amount must be in the range [0, 1]")
-    end
-
-    local hsl = self:hsl()
-    hsl.l = u.clamp(hsl.l - amount, 0, 1)
-    self.r, self.g, self.b = u.hsl_to_rgb(hsl.h, hsl.s, hsl.l)
-
-    return self
+---Returns a tuple of this color's RGB components.
+---@return number r The red component
+---@return number g The green component
+---@return number b The blue component
+function RGBColor:unpack()
+    return self.r, self.g, self.b
 end
 
+---@private
 ---@param self RGBColor
 ---@return string
 function RGBColor.__tostring(self)
@@ -223,8 +239,8 @@ end
 --- - `S`: percentage in the range [0, 100], with optional `%` sign
 --- - `L`: same as `S`
 ---
----The `H` value can have the `deg` suffix like in CSS (e.g., `155deg`), and
---commas between components are optional.
+---The `H` value can have the `deg` suffix like in CSS (e.g., `155deg`), and commas between
+---components are optional.
 ---@param s string
 ---@return HSLColor
 function HSLColor:parse(s)
@@ -259,24 +275,50 @@ function HSLColor:rgb()
     return RGBColor:_ctor(r, g, b)
 end
 
+---Add `amount` to the hue angle. A positive `amount` rotates clockwise (R->G->B), a negative
+---`amount` rotates counter-clockwise (B->G->R).
+---
+---Any `amount` is valid, but the result is clamped to the range [0, 1).
+---@param amount number Any floating point value
+---@return HSLColor self Reference to this object for method chaining
+function HSLColor:rotate(amount)
+    self.h = u.clamp(self.h + amount, 0, 1) % 1
+    return self
+end
+
+---Add `amount` to the saturation. Saturates the color with a positive value, desaturates with a
+---negative `amount`.
+---
+---Any `amount` is valid, but the result is clamped to the range [0, 1].
+---@param amount number Any floating point value
+---@return HSLColor self Reference to this object for method chaining
+function HSLColor:saturate(amount)
+    self.s = u.clamp(self.s + amount, 0, 1)
+    return self
+end
+
+---Add `amount` to the lightness. Lightens the color with a positive value, darkens with a negative
+---`amount`.
+---
+---Any `amount` is valid, but the result is clamped to the range [0, 1].
+---@param amount number Any floating point value
+---@return HSLColor self Reference to this object for method chaining
+function HSLColor:lighten(amount)
+    self.l = u.clamp(self.l + amount, 0, 1)
+    return self
+end
+
 ---Modifies the HSL component values by the given amounts.
 ---
----Values must be normalized in the range [-1, 1].
+---Any adjustment values are valid, but results are rotated/clamped to produce a valid color.
 ---
----The result of the hue adjustment is stored modulus 1 (to allow the hue to
----cycle around), and the result of the saturation/lightness adjustments are
----clamped to [0, 1].
----@param h number
----@param s number
----@param l number
+---The result of the hue adjustment is stored modulus 1 (to allow the hue to cycle around), and the
+---result of the saturation/lightness adjustments are clamped to [0, 1].
+---@param h number Amount of hue to add
+---@param s number Amount of saturation to add
+---@param l number Amount of lightness to add
 ---@return HSLColor self Reference to this object for method chaining
 function HSLColor:adjust(h, s, l)
-    for _, val in ipairs({ h, s, l }) do
-        if not val or not u.in_range(val, -1, 1) then
-            error("adjustment values must be numbers in the range [-1, 1]")
-        end
-    end
-
     self.h = (self.h + h) % 1
     self.s = u.clamp(self.s + s, 0, 1)
     self.l = u.clamp(self.l + l, 0, 1)
@@ -284,6 +326,15 @@ function HSLColor:adjust(h, s, l)
     return self
 end
 
+---Returns a tuple of this color's HSL components.
+---@return number h The hue component
+---@return number s The saturation component
+---@return number l The lightness component
+function HSLColor:unpack()
+    return self.h, self.s, self.l
+end
+
+---@private
 ---@param self HSLColor
 ---@return string
 function HSLColor.__tostring(self)
