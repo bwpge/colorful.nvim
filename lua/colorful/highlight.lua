@@ -1,10 +1,10 @@
 local const = require("colorful.const")
-local RGBColor = require("colorful.color").RGBColor
+local Color = require("colorful.color")
 
 ---@class Highlight
----@field fg? RGBColor
----@field bg? RGBColor
----@field sp? RGBColor
+---@field fg? Color
+---@field bg? Color
+---@field sp? Color
 ---@field link? string
 ---@field bold? boolean
 ---@field underline? boolean
@@ -32,7 +32,7 @@ function Highlight:new(t)
     for alias, key in pairs(const.HL_COLOR_KEYS) do
         local value = t[alias]
         if value then
-            hl[key] = RGBColor:parse(value)
+            hl[key] = Color.parse(value)
         end
     end
 
@@ -94,7 +94,7 @@ function Highlight:set_group(name, ns_id)
     local values = {}
     for k, v in pairs(self) do
         if k == "fg" or k == "bg" or k == "sp" then
-            values[k] = v:hex()
+            values[k] = v:tostring()
         else
             values[k] = v
         end
