@@ -11,6 +11,23 @@ local const = require("colorful.const")
 ---@field s number Alias for the `y` component
 ---@field l number Alias for the `z` component
 local Vector3 = {}
+setmetatable(Vector3, {
+    __call = function(self, ...)
+        local args = { ... }
+        if #args == 0 then
+            return self:_ctor(0, 0, 0)
+        end
+        if #args == 1 then
+            return self:_ctor(args[1], args[1], args[1])
+        end
+        if #args == 3 then
+            return self:_ctor(...)
+        end
+
+        error("Vec3 constructor requires 0, 1, or 3 arguments")
+    end,
+})
+
 local mt = {
     __index = function(self, key)
         if const.VEC_COMPONENTS[key] then
@@ -70,6 +87,20 @@ function Vector3:dot(rhs)
     return self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
 end
 
+---Returns a copy of this vector.
+---@return Vec3
+function Vector3:copy()
+    return Vector3:_ctor(self.x, self.y, self.z)
+end
+
+---Returns a tuple of this vector's XYZ components.
+---@return number x
+---@return number y
+---@return number z
+function Vector3:unpack()
+    return self.x, self.y, self.z
+end
+
 ---Returns the *cross product* between this vector and `rhs`.
 ---@param rhs Vec3
 ---@return Vec3
@@ -86,7 +117,7 @@ end
 ---@return Vec3
 function Vector3.__add(lhs, rhs)
     if type(lhs) ~= "table" or type(rhs) ~= "table" then
-        error("vec3: invalid operands for addition")
+        error("Vec3: invalid operands for addition")
     end
     return Vector3:_ctor(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z)
 end
@@ -97,7 +128,7 @@ end
 ---@return Vec3
 function Vector3.__sub(lhs, rhs)
     if type(lhs) ~= "table" or type(rhs) ~= "table" then
-        error("vec3: invalid operands for subtraction")
+        error("Vec3: invalid operands for subtraction")
     end
     return Vector3:_ctor(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z)
 end
@@ -115,7 +146,7 @@ function Vector3.__mul(lhs, rhs)
         vec = rhs
         scalar = lhs
     else
-        error("vec3: invalid operands for scalar multiplication")
+        error("Vec3: invalid operands for scalar multiplication")
     end
 
     return Vector3:_ctor(vec.x * scalar, vec.y * scalar, vec.z * scalar)
@@ -134,7 +165,7 @@ function Vector3.__div(lhs, rhs)
         vec = rhs
         scalar = lhs
     else
-        error("vec3: invalid operands for scalar multiplication")
+        error("Vec3: invalid operands for scalar multiplication")
     end
 
     return Vector3:_ctor(vec.x / scalar, vec.y / scalar, vec.z / scalar)
@@ -153,7 +184,7 @@ end
 ---@return boolean
 function Vector3.__eq(lhs, rhs)
     if type(lhs) ~= "table" or type(rhs) ~= "table" then
-        error("vec3: invalid operands for equality")
+        error("Vec3: invalid operands for equality")
     end
     return lhs.x == rhs.x and lhs.y == rhs.y and lhs.z == rhs.z
 end
@@ -175,25 +206,14 @@ function Vector3.__tostring(self)
     )
 end
 
-setmetatable(Vector3, {
-    __call = function(self, ...)
-        local args = { ... }
-        if #args == 0 then
-            return self:_ctor(0, 0, 0)
-        end
-        if #args == 1 then
-            return self:_ctor(args[1], args[1], args[1])
-        end
-        if #args == 3 then
-            return self:_ctor(...)
-        end
-
-        error("Vec3 constructor requires 0, 1, or 3 arguments")
-    end,
-})
-
+---Create a new vector with an optional `scalar` value.
+---
+---If `scalar` is provided, all components are set to that value, otherwise `0` is used.
 ---@alias Vec3.ctor1 fun(scalar?: number): Vec3
+
+---Create a new vector with the given component values.
 ---@alias Vec3.ctor3 fun(x: number, y: number, z: number): Vec3
+
 ---@type Vec3|Vec3.ctor1|Vec3.ctor3
 local Vec3 = Vector3
 
