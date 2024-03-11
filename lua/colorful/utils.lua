@@ -11,7 +11,7 @@ end
 
 ---Rounds a number to the nearest integer, or to the specified number of decimal places.
 ---@param value number The value to round
----@param places? integer Optional number of decimal places (must be positive if used)
+---@param places? integer Number of decimal places (must be a positive integer)
 ---@return integer
 function M.round(value, places)
     if not places then
@@ -19,7 +19,7 @@ function M.round(value, places)
     end
 
     if places < 1 then
-        error("Cannot round to negative decimal places")
+        error("Cannot round to negative decimal places", 2)
     end
     local b = 10 ^ math.floor(places)
     return math.floor(value * b + 0.5) / b
@@ -55,7 +55,7 @@ end
 function M.rgb_to_hsl(r, g, b)
     for _, component in ipairs({ r, g, b }) do
         if not M.in_range(component, 0, 1) then
-            error("RGB components must be normalized to the range [0-1]")
+            error("RGB components must be normalized to the range [0-1]", 2)
         end
     end
 
@@ -100,6 +100,12 @@ end
 ---@param l number
 ---@return number, number, number
 function M.hsl_to_rgb(h, s, l)
+    for _, component in ipairs({ h, s, l }) do
+        if not M.in_range(component, 0, 1) then
+            error("HSL components must be normalized to the range [0-1]", 2)
+        end
+    end
+
     -- achromatic
     if s == 0 then
         return l, l, l
