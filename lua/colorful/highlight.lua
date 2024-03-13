@@ -1,62 +1,85 @@
-local const = require("colorful.const")
 local Color = require("colorful.color")
+local const = require("colorful.const")
 
 ---@class Highlight
 ---@field fg? Color
 ---@field bg? Color
 ---@field sp? Color
----@field link? string
+---@field blend? boolean
 ---@field bold? boolean
+---@field standout? boolean
 ---@field underline? boolean
 ---@field undercurl? boolean
 ---@field underdouble? boolean
 ---@field underdotted? boolean
 ---@field underdashed? boolean
----@field inverse? boolean
----@field italic? boolean
----@field standout? boolean
 ---@field strikethrough? boolean
----@field altfont? boolean
+---@field italic? boolean
+---@field reverse? boolean
 ---@field nocombine? boolean
----@field ctermfg? number|string
----@field ctermbg? number|string
----@field cterm? table
+---@field link? boolean
+---@field default? boolean
+---@field ctermfg? boolean
+---@field ctermbg? boolean
+---@field cterm? boolean
 local Highlight = {}
+setmetatable(Highlight, {
+    __call = function(cls, ...)
+        local args = { ... }
+        if #args == 0 then
+            return Highlight.new()
+        end
+        if #args > 3 then
+            error("Highlight constructor takes at most 3 arguments", 2)
+        end
+
+        return cls.from_group(...)
+    end,
+})
+
+local mt = {
+    __index = Highlight,
+}
 
 ---Creates a new `Highlight` with the given table values.
 ---
 ---Invalid keys are ignored.
----@param t table
-function Highlight:new(t)
+---@param t? table
+function Highlight.new(t)
+    t = t or {}
     local hl = {}
+
     for alias, key in pairs(const.HL_COLOR_KEYS) do
         local value = t[alias]
         if value then
-            hl[key] = Color.parse(value)
+            if Color.is_color(value) then
+                hl[key] = value
+            else
+                hl[key] = Color.parse(value)
+            end
         end
     end
 
-    hl.link = t.link
+    hl.blend = t.blend
     hl.bold = t.bold
+    hl.standout = t.standout
     hl.underline = t.underline
     hl.undercurl = t.undercurl
     hl.underdouble = t.underdouble
     hl.underdotted = t.underdotted
     hl.underdashed = t.underdashed
-    hl.inverse = t.inverse
-    hl.italic = t.italic
-    hl.standout = t.standout
     hl.strikethrough = t.strikethrough
-    hl.altfont = t.altfont
+    hl.italic = t.italic
+    hl.reverse = t.reverse
     hl.nocombine = t.nocombine
+    hl.link = t.link
+    hl.default = t.default
     hl.ctermfg = t.ctermfg
     hl.ctermbg = t.ctermbg
     hl.cterm = t.cterm
 
     ---@type Highlight
-    return setmetatable(hl, {
-        __index = Highlight,
-    })
+    return setmetatable(hl, mt)
 end
 
 ---Returns whether or not the given highlight group `name` exists.
@@ -70,41 +93,21 @@ end
 
 ---Returns the result of `nvim_get_hl` as a `Highlight` object.
 ---
----Throws an error if the highlight group `name` does not exist.
----
----This function was adapted from a reddit comment, see:
----https://www.reddit.com/r/neovim/comments/oxddk9/comment/h7maerh
+---Throws an error if the group name does not exist.
 ---@param name string
 ---@param ns_id? integer
 ---@param link? boolean
 ---@return Highlight
-function Highlight:from_group(name, ns_id, link)
+function Highlight.from_group(name, ns_id, link)
     if not Highlight.exists(name) then
         error(string.format("Highlight group `%s` does not exist", name))
     end
 
     local hl = vim.api.nvim_get_hl(ns_id or 0, { name = name, link = link or false })
-    return Highlight:new(hl)
+    return Highlight.new(hl)
 end
 
----Sets the given highlight group `name` with this highlight using `nvim_set_hl`.
----@param name string
----@param ns_id? integer
-function Highlight:set_group(name, ns_id)
-    local values = {}
-    for k, v in pairs(self) do
-        if k == "fg" or k == "bg" or k == "sp" then
-            values[k] = v:tostring()
-        else
-            values[k] = v
-        end
-    end
-
-    vim.api.nvim_set_hl(ns_id or 0, name, values)
-end
-
----Calls `nvim_get_hl` until reaching a highlight group that is not linked and
----returns the name.
+---Calls `nvim_get_hl` until reaching a highlight group that is not linked and returns the name.
 ---
 ---Returns `nil` if the highlight group does not exist.
 ---@param name string
@@ -127,4 +130,34 @@ function Highlight.resolve_link(name, ns_id)
     return current
 end
 
-return Highlight
+---Sets the given highlight group `name` with this highlight using `nvim_set_hl`.
+---@param name string
+---@param ns_id? integer
+function Highlight:set(name, ns_id)
+    local values = {}
+    for k, v in pairs(self) do
+        if Color.is_color(v) then
+            ---@cast v Color
+            values[k] = v:tostring()
+        else
+            values[k] = v
+        end
+    end
+
+    vim.api.nvim_set_hl(ns_id or 0, name, values)
+end
+
+---Create a default (empty) `Highlight`.
+---
+---To create from a table, use `Highlight.new`.
+---@alias Highlight.ctor0 fun(): Highlight
+
+---Create a `Highlight` from a group name. Equivalent to calling `Highlight.from_group`.
+---
+---Throws an error if the group name does not exist.
+---@alias Highlight.ctor3 fun(name: string, ns_id?: number, link?: boolean): Highlight
+
+---@type Highlight|Highlight.ctor0|Highlight.ctor3
+local HL = Highlight
+
+return HL
