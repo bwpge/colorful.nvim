@@ -1,4 +1,5 @@
 local const = require("colorful.const")
+local F = require("colorful.functional")
 local u = require("colorful.utils")
 local Vec3 = require("colorful.vec3")
 
@@ -402,6 +403,20 @@ function Color:unpack(format)
         return self._rgb:unpack()
     end
     return self._hsl:unpack()
+end
+
+---@alias Color.MapFn fun(c: Color): Color
+
+---Applies the provided function to a copy of the color if it is not `nil`.
+---@param color Color?
+---@param fn Color.MapFn
+---@return Color?
+function Color.map(color, fn)
+    local c = nil
+    if color then
+        c = color:copy()
+    end
+    return F.map(c, fn)
 end
 
 ---Update the inner RGB components from the HSL components.

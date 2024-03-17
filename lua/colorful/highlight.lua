@@ -1,6 +1,8 @@
 local Color = require("colorful.color")
 local const = require("colorful.const")
 
+---@alias ColorField "fg"|"bg"|"sp"
+
 ---@class Highlight
 ---@field fg? Color
 ---@field bg? Color
@@ -128,6 +130,77 @@ function Highlight.resolve_link(name, ns_id)
     end
 
     return current
+end
+
+---@param field? ColorField
+---@param name? string
+---@param ... string?
+---@return Color?
+local function get_color_field(field, name, ...)
+    if not name then
+        local hl
+        if Highlight.exists("Normal") then
+            hl = Highlight("Normal")
+        end
+
+        if not hl or not hl[field] then
+            return nil
+        end
+        return hl[field]
+    end
+
+    if Highlight.exists(name) then
+        local hl = Highlight(name)
+        if hl[field] then
+            return hl[field]
+        end
+    end
+
+    return get_color_field(field, ...)
+end
+
+---Returns the foreground color from the first highlight group that defines one.
+---
+---If none of the groups define a foreground color, `Normal` is used as a fallback. If `Nornmal` is
+---not set or does not provide a color, `nil` is returned.
+---@param name string?
+---@param ... string?
+---@return Color?
+function Highlight.get_fg(name, ...)
+    return get_color_field("fg", name, ...)
+end
+
+---Returns the background color from the first highlight group that defines one.
+---
+---If none of the groups define a background color, `Normal` is used as a fallback. If `Nornmal` is
+---not set or does not provide a color, `nil` is returned.
+---@param name string?
+---@param ... string?
+---@return Color?
+function Highlight.get_bg(name, ...)
+    return get_color_field("bg", name, ...)
+end
+
+---Applies the provided function to a copy of the color if it is not `nil`.
+---@param field ColorField
+---@param fn Color.MapFn
+---@return Color?
+function Highlight:map_color(field, fn)
+    return Color.map(self[field], fn)
+end
+
+---Applies the provided function to a copy of the foreground color if it is not `nil`.
+---@param fn Color.MapFn
+---@return Color?
+function Highlight:map_fg(fn)
+    return self:map_color("fg", fn)
+end
+
+---Applies the provided function to a copy of the background color if it is not `nil`.
+---@param fn Color.MapFn
+---@return Color?
+function Highlight:map_bg(fn)
+    return self:map_color("bg", fn)
 end
 
 ---Sets the given highlight group `name` with this highlight using `nvim_set_hl`.
