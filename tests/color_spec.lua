@@ -91,25 +91,45 @@ describe("Color:tostring()", function()
         local expected = "#ff79c5"
         assert.equal(pink:tostring(), expected)
         assert.equal(pink:tostring("rgb"), expected)
-        assert.equal(pink:to_rgb_str(), expected)
     end)
 
     it("should return an HSL string with the form `hsl(H, S%, L%)`", function()
         local expected = "hsl(326, 100%, 74%)"
         assert.equal(pink:tostring("hsl"), expected)
-        assert.equal(pink:to_hsl_str(), expected)
     end)
 end)
 
 describe("Color", function()
+    it("should clamp assigned RGB values", function()
+        local color = Color.new_rgb(0.95, 0.95, 0.95)
+        color.r = color.r + 100
+        color.g = color.g + 100
+        color.b = color.b + 100
+
+        assert.equal(color.r, 1)
+        assert.equal(color.g, 1)
+        assert.equal(color.b, 1)
+    end)
+
+    it("should rotate/clamp assigned HSL values", function()
+        local color = Color.new_hsl(0, 0.95, 0.95)
+        color.h = color.h + 100
+        color.s = color.s + 100
+        color.l = color.l + 100
+
+        assert.equal(color.h, 0)
+        assert.equal(color.s, 1)
+        assert.equal(color.l, 1)
+    end)
+
     it("should properly evaluate equality with tables", function()
         local Vec3 = require("colorful.vec3")
-        local color = Color()
+        local color = Color(0, 0, 0)
         local obj = { _rgb = Vec3(), _hsl = Vec3() }
 
         assert.are_not_equal(color, {})
         assert.are_not_equal(color, obj)
-        assert.equal(color, Color())
+        assert.equal(color, Color("#000"))
     end)
 
     it("should unpack RGB components", function()

@@ -42,11 +42,15 @@ local mt = {
     end,
     __newindex = function(self, key, value)
         if const.RGB_COMPONENTS[key] then
-            self._rgb[key] = value
+            self._rgb[key] = u.clamp(value, 0, 1)
             self:_update_hsl()
         end
         if const.HSL_COMPONENTS[key] then
-            self._hsl[key] = value
+            if key == "h" then
+                self._hsl[key] = value % 1
+            else
+                self._hsl[key] = u.clamp(value, 0, 1)
+            end
             self:_update_rgb()
         end
         Color[key] = value
@@ -253,6 +257,7 @@ function Color:copy()
 end
 
 ---Returns this color as a hexadecimal string with the form `#RRGGBB`.
+---@private
 ---@return string
 function Color:to_rgb_str()
     local r = u.round(self.r * 255)
@@ -265,6 +270,7 @@ end
 ---
 ---The `H` value is printed as degrees [0, 360), and the `S`/`L` components are printed as
 ---percentages [0, 100] with a `%` sign.
+---@private
 ---@return string
 function Color:to_hsl_str()
     -- NOTE: hue should always be in the range [0, 1), so the degrees should
