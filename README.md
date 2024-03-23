@@ -24,7 +24,7 @@ Using `lazy.nvim`, create a `colorful.lua` [plugin spec](https://github.com/folk
 
 ```lua
 local function make_hl_table()
-    local F = require("colorful.functional")
+    local F = require("colorful.color.functional")
     local Highlight = require("colorful.highlight")
 
     -- use "Normal" for our base color palette. this is generally a safe bet to
@@ -32,12 +32,11 @@ local function make_hl_table()
     local hl = Highlight("Normal")
 
     -- think of these colors as "swatches" on a palette. we can build these out
-    -- using HSL functions (like `lighten`) to preserve the hue and saturation
-    -- of the base color, making the new colors feel consistent.
-    local fg = hl.fg -- Normal foreground is pretty much always going to be set
-    local bg = hl:map_bg(F.lighten(0.02))
-    local bg_dark = hl:map_bg(F.lighten(-0.045))
-    local dim = hl:map_bg(F.lighten(0.125))
+    -- using HSL functions to make the new colors feel consistent.
+    local fg = hl.fg
+    local bg = hl:map_copy("bg", F.lighten(0.02))
+    local bg_dark = hl:map_copy("bg", F.lighten(-0.045))
+    local dim = hl:map_copy("bg", F.lighten(0.125))
     -- use multiple groups to find accent colors; functions are usually a bit
     -- more contrasted/colorful in most colorschemes. other good choices are
     -- Keyword, String, or Constant. This function will fallback to using the
@@ -53,12 +52,12 @@ local function make_hl_table()
         ["*"] = {
             TelescopeNormal = { fg = fg, bg = bg_dark },
             TelescopePreviewBorder = { fg = bg_dark, bg = bg_dark },
-            TelescopePreviewTitle = { fg = accent, bg = bg_dark, reverse = true, bold = true },
+            TelescopePreviewTitle = { fg = accent, reverse = true, bold = true },
             TelescopePromptBorder = { fg = bg, bg = bg },
             TelescopePromptCounter = { fg = dim },
             TelescopePromptNormal = { fg = fg, bg = bg },
             TelescopePromptPrefix = { fg = accent },
-            TelescopePromptTitle = { fg = accent, bg = bg, reverse = true, bold = true },
+            TelescopePromptTitle = { fg = accent, reverse = true, bold = true },
             TelescopeResultsBorder = { fg = bg_dark, bg = bg_dark },
             TelescopeResultsTitle = { fg = bg_dark, bg = bg_dark },
         },
@@ -185,21 +184,21 @@ Create new highlight groups based on existing ones with mappings:
 
 ```lua
 local Highlight = require("colorful.highlight")
-local F = require("colorful.functional")
+local F = require("colorful.color.functional")
 
 local hl = Highlight("TelescopePromptNormal")
 
 -- use map for possibly nil colors;
--- assignment is needed since map creates a copy
-hl.fg = hl:map_fg(F.saturate(0.25))
-hl.bg = hl:map_bg(F.lighten(-0.05))
+-- to modify only a copy, use `map_copy`
+hl:map("fg", F.saturate(0.25))
+hl:map("bg", F.lighten(-0.05))
 
 -- or, equivalent:
 -- if hl.fg then
---     hl.fg:saturate(0.25) -- modify in place
+--     hl.fg:saturate(0.25)
 -- end
 -- if hl.bg then
---     hl.bg:saturate(0.25) -- modify in place
+--     hl.bg:saturate(0.25)
 -- end
 
 -- create a new highlight group
