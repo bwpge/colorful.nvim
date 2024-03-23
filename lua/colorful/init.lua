@@ -35,20 +35,22 @@ local function set_hl_table(t)
 end
 
 local function apply_highlights()
-    -- always apply `*` first, regardless of colorscheme
     local hls = M.options.highlights()
+    local merged = {}
+
     if hls["*"] then
-        set_hl_table(hls["*"])
+        merged = vim.tbl_deep_extend("force", merged, hls["*"])
         hls["*"] = nil
     end
 
-    -- matches are not guaranteed in any particular order
-    local colorscheme = vim.g.colors_name
+    local colorscheme = vim.g.colors_name or ""
     for name, t in pairs(hls) do
-        if colorscheme:match(name) then
-            set_hl_table(t)
+        if #name > 0 and colorscheme:match(name) then
+            merged = vim.tbl_deep_extend("force", merged, t)
         end
     end
+
+    set_hl_table(merged)
 end
 
 ---Runs the plugin setup with user provided options.
