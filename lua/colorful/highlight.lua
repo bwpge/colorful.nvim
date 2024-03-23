@@ -181,26 +181,22 @@ function Highlight.get_bg(name, ...)
     return get_color_field("bg", name, ...)
 end
 
----Applies the provided function to a copy of the color if it is not `nil`.
+---Applies the provided functions to a copy of the color if it is not `nil`.
 ---@param field ColorField
 ---@param fn Color.MapFn
+---@param ... Color.MapFn
 ---@return Color?
-function Highlight:map_color(field, fn)
-    return Color.map(self[field], fn)
+function Highlight:map_copy(field, fn, ...)
+    return Color.map_copy(self[field], fn, ...)
 end
 
----Applies the provided function to a copy of the foreground color if it is not `nil`.
+---Applies the provided functions to modify the color if it is not `nil`.
+---@param field ColorField
 ---@param fn Color.MapFn
+---@param ... Color.MapFn
 ---@return Color?
-function Highlight:map_fg(fn)
-    return self:map_color("fg", fn)
-end
-
----Applies the provided function to a copy of the background color if it is not `nil`.
----@param fn Color.MapFn
----@return Color?
-function Highlight:map_bg(fn)
-    return self:map_color("bg", fn)
+function Highlight:map(field, fn, ...)
+    return Color.map(self[field], fn, ...)
 end
 
 ---Sets the given highlight group `name` with this highlight using `nvim_set_hl`.
